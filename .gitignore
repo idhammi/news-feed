@@ -1,0 +1,49 @@
+# Android Studio & IntelliJ
+.idea/
+*.iml
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
+
+# Build output
+/build/
+*/build/
+.cxx/
+.externalNativeBuild/
+output.json
+
+# Gradle
+.gradle/
+local.properties
+
+# Keystore (private)
+*.jks
+*.keystore
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+# APK / AAB artifacts
+*.apk
+*.ap_
+*.aab
+
+# Log & temp files
+*.log
+*.tmp
+*.bak
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Test & coverage
+*.ec
+
+# Screen captures & debugging
+captures/
+
+# Android Profiling
+*.hprof
+
+/.kotlin/
