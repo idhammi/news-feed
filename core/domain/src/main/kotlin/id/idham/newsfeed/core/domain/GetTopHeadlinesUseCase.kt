@@ -6,7 +6,7 @@ import id.idham.newsfeed.core.model.Article
 import kotlinx.coroutines.flow.Flow
 
 class GetTopHeadlinesUseCase(private val repository: NewsRepository) {
-    operator fun invoke(): Flow<PagingData<Article>> {
-        return repository.getTopHeadlines("general")
+    operator fun invoke(country: String? = null): Flow<PagingData<Article>> {
+        return repository.getTopHeadlines("general", country)
     }
 }

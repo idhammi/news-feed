@@ -1,5 +1,9 @@
 package id.idham.newsfeed.feature.home
 
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
+import android.Manifest.permission.ACCESS_FINE_LOCATION
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,14 +26,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,13 +69,41 @@ fun HomeScreen(
     onItemClicked: (Article) -> Unit
 ) {
     val articles = viewModel.articlesFlow.collectAsLazyPagingItems()
-    var viewMode by rememberSaveable { mutableStateOf(ViewMode.LIST) }
+    val viewModeState = rememberSaveable { mutableStateOf(ViewMode.LIST) }
+    val selectedTabIndexState = rememberSaveable { mutableIntStateOf(0) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[ACCESS_COARSE_LOCATION] ?: false
+        if (fineLocationGranted || coarseLocationGranted) {
+            viewModel.fetchLocalNews()
+        } else {
+            selectedTabIndexState.intValue = 0
+            viewModel.fetchGlobalNews()
+        }
+    }
 
     HomeScreenContent(
         modifier = modifier,
         articles = articles,
-        viewMode = viewMode,
-        onViewModeChange = { viewMode = it },
+        viewMode = viewModeState.value,
+        selectedTabIndex = selectedTabIndexState.intValue,
+        onTabSelected = { index ->
+            selectedTabIndexState.intValue = index
+            if (index == 1) {
+                locationPermissionLauncher.launch(
+                    arrayOf(
+                        ACCESS_FINE_LOCATION,
+                        ACCESS_COARSE_LOCATION
+                    )
+                )
+            } else {
+                viewModel.fetchGlobalNews()
+            }
+        },
+        onViewModeChange = { viewModeState.value = it },
         onItemClicked = onItemClicked
     )
 }
@@ -81,35 +114,51 @@ private fun HomeScreenContent(
     modifier: Modifier = Modifier,
     articles: LazyPagingItems<Article>,
     viewMode: ViewMode,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
     onViewModeChange: (ViewMode) -> Unit,
     onItemClicked: (Article) -> Unit
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("News Feed") },
-                actions = {
-                    IconButton(onClick = {
-                        onViewModeChange(
-                            when (viewMode) {
-                                ViewMode.LIST -> ViewMode.GRID
-                                ViewMode.GRID -> ViewMode.LIST
-                            }
-                        )
-                    }) {
-                        Icon(
-                            imageVector = when (viewMode) {
-                                ViewMode.LIST -> Icons.Default.GridView
-                                ViewMode.GRID -> Icons.AutoMirrored.Default.ViewList
-                            },
-                            contentDescription = when (viewMode) {
-                                ViewMode.LIST -> "Switch to grid view"
-                                ViewMode.GRID -> "Switch to list view"
-                            }
-                        )
+            Column {
+                TopAppBar(
+                    title = { Text("News Feed") },
+                    actions = {
+                        IconButton(onClick = {
+                            onViewModeChange(
+                                when (viewMode) {
+                                    ViewMode.LIST -> ViewMode.GRID
+                                    ViewMode.GRID -> ViewMode.LIST
+                                }
+                            )
+                        }) {
+                            Icon(
+                                imageVector = when (viewMode) {
+                                    ViewMode.LIST -> Icons.Default.GridView
+                                    ViewMode.GRID -> Icons.AutoMirrored.Default.ViewList
+                                },
+                                contentDescription = when (viewMode) {
+                                    ViewMode.LIST -> "Switch to grid view"
+                                    ViewMode.GRID -> "Switch to list view"
+                                }
+                            )
+                        }
                     }
+                )
+                PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { onTabSelected(0) },
+                        text = { Text("General") }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = { onTabSelected(1) },
+                        text = { Text("Local News") }
+                    )
                 }
-            )
+            }
         }
     ) { innerPadding ->
         Box(

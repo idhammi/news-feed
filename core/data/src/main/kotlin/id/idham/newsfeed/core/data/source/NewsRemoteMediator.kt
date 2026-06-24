@@ -23,8 +23,11 @@ import java.io.IOException
 class NewsRemoteMediator(
     private val db: AppDatabase,
     private val api: NewsApiService,
-    private val category: String
+    private val category: String,
+    private val country: String? = null
 ) : RemoteMediator<Int, ArticleEntity>() {
+
+    private val cacheCategory = if (country != null) "${category}_$country" else category
 
     override suspend fun initialize(): InitializeAction {
         return InitializeAction.LAUNCH_INITIAL_REFRESH
@@ -60,6 +63,7 @@ class NewsRemoteMediator(
         return try {
             val response = api.getTopHeadlines(
                 category = category,
+                country = country,
                 pageSize = state.config.pageSize.toString(),
                 page = page.toString()
             )
@@ -70,7 +74,7 @@ class NewsRemoteMediator(
             db.withTransaction {
                 if (loadType == LoadType.REFRESH) {
                     db.remoteKeysDao().clearRemoteKeys()
-                    db.newsDao().clearAll(category)
+                    db.newsDao().clearAll(cacheCategory)
                 }
 
                 val prevKey = if (page == STARTING_PAGE) null else page - 1
@@ -81,7 +85,7 @@ class NewsRemoteMediator(
                 }
 
                 db.remoteKeysDao().insertAll(keys)
-                db.newsDao().insertAll(articles.toEntity(category))
+                db.newsDao().insertAll(articles.toEntity(cacheCategory))
             }
             MediatorResult.Success(endOfPaginationReached = endOfPaginationReached)
         } catch (e: HttpException) {

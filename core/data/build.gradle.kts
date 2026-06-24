@@ -12,6 +12,7 @@ dependencies {
     api(libs.androidx.paging.runtime)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.play.services.location)
 
     // Koin
     implementation(libs.koin.core)

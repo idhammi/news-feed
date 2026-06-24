@@ -19,7 +19,8 @@ class DefaultNewsRepository(
 ) : NewsRepository {
 
     @OptIn(ExperimentalPagingApi::class)
-    override fun getTopHeadlines(category: String): Flow<PagingData<Article>> {
+    override fun getTopHeadlines(category: String, country: String?): Flow<PagingData<Article>> {
+        val cacheCategory = if (country != null) "${category}_$country" else category
         return Pager(
             config = PagingConfig(
                 pageSize = PAGE_SIZE,
@@ -29,9 +30,10 @@ class DefaultNewsRepository(
             remoteMediator = NewsRemoteMediator(
                 db = db,
                 api = api,
-                category = category
+                category = category,
+                country = country
             ),
-            pagingSourceFactory = { db.newsDao().pagingSource(category) }
+            pagingSourceFactory = { db.newsDao().pagingSource(cacheCategory) }
         ).flow.map { pagingData ->
             pagingData.map { it.toArticle() }
         }

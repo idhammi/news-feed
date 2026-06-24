@@ -1,5 +1,7 @@
 package id.idham.newsfeed.core.network.di
 
+import android.content.Context
+import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import id.idham.newsfeed.core.network.BuildConfig
@@ -25,6 +27,7 @@ val networkModule = module {
             .Builder()
             .addInterceptor(get<AuthInterceptor>())
             .addInterceptor(get<HttpLoggingInterceptor>())
+            .addInterceptor(ChuckerInterceptor.Builder(get<Context>()).build())
             .build()
     }
 

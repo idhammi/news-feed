@@ -43,4 +43,6 @@ dependencies {
 
     // Logging
     implementation(libs.okhttp.logging)
+    debugImplementation(libs.chucker.debug)
+    releaseImplementation(libs.chucker.release)
 }
