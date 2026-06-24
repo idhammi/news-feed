@@ -9,6 +9,21 @@ Network requests are handled using the `Retrofit2` and `OkHttp3` libraries.
 - **Method**: `HTTP GET` on the `/v2/top-headlines` endpoint
 - **Response Format**: JSON
 
+### Code Sample
+Here is the Retrofit API interface implementation:
+
+```kotlin
+interface NewsApi {
+    @GET("v2/top-headlines")
+    suspend fun getTopHeadlines(
+        @Query("category") category: String,
+        @Query("country") country: String? = "us",
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 20
+    ): NewsResponse
+}
+```
+
 ## 2. Network Optimization
 To optimize cellular data usage and maintain application responsiveness, the following mechanisms are utilized:
 

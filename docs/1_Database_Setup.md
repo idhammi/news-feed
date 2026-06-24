@@ -21,7 +21,42 @@ Stores news articles retrieved from NewsAPI for offline availability.
 | `content` | TEXT | Full content of the news | - |
 | `country` | TEXT | Country code of the news (e.g., 'id' or 'us') | - |
 
-## 2. Caching Strategy
+## 2. Code Implementation
+
+Here is the Room Entity mapping used in the project:
+
+```kotlin
+@Entity(tableName = "articles")
+data class ArticleEntity(
+    @PrimaryKey
+    val id: String,
+    val title: String,
+    val description: String?,
+    val url: String,
+    val urlToImage: String?,
+    val publishedAt: String,
+    val content: String?,
+    val country: String
+)
+```
+
+And the DAO (Data Access Object) managing the offline queries:
+
+```kotlin
+@Dao
+interface NewsDao {
+    @Query("SELECT * FROM articles WHERE country = :country ORDER BY publishedAt DESC")
+    fun getArticles(country: String): PagingSource<Int, ArticleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(articles: List<ArticleEntity>)
+
+    @Query("DELETE FROM articles WHERE country = :country")
+    suspend fun clearArticles(country: String)
+}
+```
+
+## 3. Caching Strategy
 
 The project implements a **Single Source of Truth (SSOT)** pattern using `RemoteMediator` from the Paging 3 library:
 1. Data is initially loaded from the local Room Database to reduce load times and enable offline access.
@@ -29,7 +64,7 @@ The project implements a **Single Source of Truth (SSOT)** pattern using `Remote
 3. Upon a successful response, existing cached articles are cleared (during a refresh operation) and replaced with the new data.
 4. The UI automatically recomposes by observing a data stream (Flow) from the Room DAO.
 
-## 3. SQL Schema
+## 4. SQL Schema
 While Room abstracts the SQL generation, the underlying schema for the `articles` table is represented as follows:
 ```sql
 CREATE TABLE IF NOT EXISTS `articles` (

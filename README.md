@@ -22,12 +22,12 @@ A simple Android application that displays news articles using the NewsAPI. Buil
 
 ## Documentation
 
+Detailed technical documentation for this project:
 1. [Database & Caching Setup](docs/1_Database_Setup.md)
 2. [GPS & Location Based Services (LBS)](docs/2_GPS_LBS_Feature.md)
-3. [Wireframes & UI Mockups](docs/3_Wireframe_UI_Mockup.md)
-4. [Mobile Security Features](docs/4_Mobile_Security.md)
-5. [Hardware Sensors Integration](docs/5_Mobile_Sensor.md)
-6. [Cellular Network & API Optimization](docs/6_Cellular_Network.md)
+3. [Mobile Security Features](docs/3_Mobile_Security.md)
+4. [Hardware Sensors Integration](docs/4_Mobile_Sensor.md)
+5. [Cellular Network & API Optimization](docs/5_Cellular_Network.md)
 
 ## Architecture
 

@@ -13,6 +13,38 @@ The application accesses the device's location when the user navigates to the "L
   - `ACCESS_FINE_LOCATION`
 - **Component**: `LocationTracker`
 
+### Code Sample
+Here is the core logic inside the project responsible for fetching and reverse-geocoding the user's location into a specific Country Code:
+
+```kotlin
+override suspend fun getCurrentLocation(): Location? {
+    // Check Permissions
+    val hasAccessFineLocationPermission = ContextCompat.checkSelfPermission(
+        application, Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    
+    if (!hasAccessFineLocationPermission) return null
+
+    // Fetch Coordinates and Geocode to Country Code
+    return suspendCancellableCoroutine { cont ->
+        locationClient.lastLocation.addOnCompleteListener { task ->
+            if (task.isSuccessful && task.result != null) {
+                val address = geocoder.getFromLocation(
+                    task.result.latitude, 
+                    task.result.longitude, 
+                    1
+                )?.firstOrNull()
+                
+                val countryCode = address?.countryCode?.lowercase() ?: "us"
+                cont.resume(Location(countryCode))
+            } else {
+                cont.resume(null)
+            }
+        }
+    }
+}
+```
+
 ### Workflow:
 1. **Permission Check**: The application verifies if location permissions have been granted via a Compose dialog.
 2. **Coordinate Retrieval**: `LocationTracker` retrieves the device's current Latitude and Longitude.
@@ -22,8 +54,6 @@ The application accesses the device's location when the user navigates to the "L
 
 ## 3. Implementation Screenshots
 
-**GPS Location permission request dialog:**
-![Permission Dialog](images/4.png)
-
-**Home screen UI displaying the localized news feed:**
-![Localized News Feed](images/5.png)
+| Permission Request Dialog          | Localized News Feed                  |
+|------------------------------------|--------------------------------------|
+| ![Permission Dialog](images/4.png) | ![Localized News Feed](images/5.png) |

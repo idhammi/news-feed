@@ -20,3 +20,27 @@ The feature is implemented within a Lifecycle-Aware component named `ShakeDetect
 5. **Debouncing**: A 500ms debounce interval is implemented to prevent multiple refresh calls from a single continuous motion.
 
 *(Note: The sensor listener is automatically unregistered when the user navigates away from the Home Screen to optimize battery consumption).*
+
+### Code Sample
+Here is the core logic calculating the gravitational force threshold:
+
+```kotlin
+override fun onSensorChanged(event: SensorEvent?) {
+    event?.let {
+        val gX = it.values[0] / SensorManager.GRAVITY_EARTH
+        val gY = it.values[1] / SensorManager.GRAVITY_EARTH
+        val gZ = it.values[2] / SensorManager.GRAVITY_EARTH
+
+        // Calculate total gForce (Pythagorean 3D theorem)
+        val gForce = kotlin.math.sqrt((gX * gX + gY * gY + gZ * gZ).toDouble()).toFloat()
+
+        if (gForce > SHAKE_THRESHOLD_GRAVITY) {
+            val now = System.currentTimeMillis()
+            if (now - lastShakeTime > SHAKE_SLOP_TIME_MS) {
+                lastShakeTime = now
+                onShake()
+            }
+        }
+    }
+}
+```
