@@ -2,6 +2,7 @@ package id.idham.newsfeed.feature.home
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -83,6 +84,12 @@ fun HomeScreen(
             selectedTabIndexState.intValue = 0
             viewModel.fetchGlobalNews()
         }
+    }
+
+    val context = LocalContext.current
+    rememberShakeDetector {
+        articles.refresh()
+        Toast.makeText(context, "Refreshing...", Toast.LENGTH_SHORT).show()
     }
 
     HomeScreenContent(
