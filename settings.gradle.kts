@@ -23,6 +23,12 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven {
+            url = uri("https://jitpack.io")
+        }
+        maven {
+            url = uri("https://europe-west3-maven.pkg.dev/talsec-artifact-repository/freerasp")
+        }
     }
 }
 

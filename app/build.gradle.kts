@@ -65,6 +65,9 @@ dependencies {
     // Koin
     implementation(libs.koin.android)
 
+    // Talsec FreeRASP
+    implementation(libs.talsec.freerasp)
+
     testImplementation(libs.junit)
     testImplementation(libs.koin.test)
     testImplementation(libs.koin.test.junit4)
