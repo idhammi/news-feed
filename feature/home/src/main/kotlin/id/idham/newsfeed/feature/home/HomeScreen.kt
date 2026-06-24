@@ -117,54 +117,46 @@ private fun HomeScreenContent(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (articles.loadState.refresh) {
-                is LoadState.Loading -> {
-                    LoadingState()
-                }
-
-                is LoadState.Error -> {
-                    val error = (articles.loadState.refresh as LoadState.Error).error
-                    ErrorState(error.message)
-                }
-
-                is LoadState.NotLoading -> {
-                    if (articles.itemCount == 0) {
-                        EmptyState()
-                    } else {
-                        when (viewMode) {
-                            ViewMode.LIST -> {
-                                LazyColumn(
-                                    contentPadding = PaddingValues(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(articles.itemCount) { index ->
-                                        articles[index]?.let { article ->
-                                            NewsArticleListItem(article) { onItemClicked(it) }
-                                        }
-                                    }
-
-                                    item {
-                                        LoadingFooter(articles.loadState.append)
-                                    }
+            if (articles.loadState.refresh is LoadState.Loading && articles.itemCount == 0) {
+                LoadingState()
+            } else if (articles.loadState.refresh is LoadState.Error && articles.itemCount == 0) {
+                val error = (articles.loadState.refresh as LoadState.Error).error
+                ErrorState(error.message)
+            } else if (articles.loadState.refresh is LoadState.NotLoading && articles.itemCount == 0) {
+                EmptyState()
+            } else {
+                when (viewMode) {
+                    ViewMode.LIST -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(articles.itemCount) { index ->
+                                articles[index]?.let { article ->
+                                    NewsArticleListItem(article) { onItemClicked(it) }
                                 }
                             }
 
-                            ViewMode.GRID -> {
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(2),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(articles.itemCount) { index ->
-                                        articles[index]?.let { article ->
-                                            NewsArticleGridItem(article) { onItemClicked(it) }
-                                        }
-                                    }
+                            item {
+                                LoadingFooter(articles.loadState.append)
+                            }
+                        }
+                    }
 
-                                    item {
-                                        LoadingFooter(articles.loadState.append)
-                                    }
+                    ViewMode.GRID -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(articles.itemCount) { index ->
+                                articles[index]?.let { article ->
+                                    NewsArticleGridItem(article) { onItemClicked(it) }
                                 }
+                            }
+
+                            item {
+                                LoadingFooter(articles.loadState.append)
                             }
                         }
                     }
