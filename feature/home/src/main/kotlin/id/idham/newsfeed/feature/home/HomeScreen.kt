@@ -5,24 +5,37 @@ import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,19 +46,27 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -58,6 +79,13 @@ import id.idham.newsfeed.core.ui.EmptyState
 import id.idham.newsfeed.core.ui.ErrorState
 import id.idham.newsfeed.core.ui.LoadingState
 import org.koin.androidx.compose.koinViewModel
+import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Marker
 
 enum class ViewMode {
     LIST, GRID
@@ -70,6 +98,8 @@ fun HomeScreen(
     onItemClicked: (Article) -> Unit
 ) {
     val articles = viewModel.articlesFlow.collectAsLazyPagingItems()
+    val mapLocation = viewModel.mapLocation.collectAsStateWithLifecycle()
+    val countryName = viewModel.countryName.collectAsStateWithLifecycle()
     val viewModeState = rememberSaveable { mutableStateOf(ViewMode.LIST) }
     val selectedTabIndexState = rememberSaveable { mutableIntStateOf(0) }
 
@@ -111,7 +141,10 @@ fun HomeScreen(
             }
         },
         onViewModeChange = { viewModeState.value = it },
-        onItemClicked = onItemClicked
+        onItemClicked = onItemClicked,
+        mapLocation = mapLocation.value,
+        countryName = countryName.value,
+        onMapClick = { lat, lng -> viewModel.updateMapLocation(lat, lng) }
     )
 }
 
@@ -124,8 +157,24 @@ private fun HomeScreenContent(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     onViewModeChange: (ViewMode) -> Unit,
-    onItemClicked: (Article) -> Unit
+    onItemClicked: (Article) -> Unit,
+    mapLocation: GeoPoint?,
+    countryName: String?,
+    onMapClick: (Double, Double) -> Unit
 ) {
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+
+    val isScrolledDown by remember(viewMode) {
+        derivedStateOf {
+            if (viewMode == ViewMode.LIST) {
+                listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 20
+            } else {
+                gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 20
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             Column {
@@ -173,46 +222,106 @@ private fun HomeScreenContent(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (articles.loadState.refresh is LoadState.Loading && articles.itemCount == 0) {
-                LoadingState()
-            } else if (articles.loadState.refresh is LoadState.Error && articles.itemCount == 0) {
-                val error = (articles.loadState.refresh as LoadState.Error).error
-                ErrorState(error.message)
-            } else if (articles.loadState.refresh is LoadState.NotLoading && articles.itemCount == 0) {
-                EmptyState()
-            } else {
-                when (viewMode) {
-                    ViewMode.LIST -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(articles.itemCount) { index ->
-                                articles[index]?.let { article ->
-                                    NewsArticleListItem(article) { onItemClicked(it) }
-                                }
-                            }
+            Column(modifier = Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = selectedTabIndex == 1 && !isScrolledDown,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.5f)
+                        .clipToBounds()) {
+                        OsmMapView(
+                            mapLocation = mapLocation,
+                            countryName = countryName,
+                            onMapClick = onMapClick,
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                            item {
-                                LoadingFooter(articles.loadState.append)
+                        if (countryName != null) {
+                            ElevatedCard(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(16.dp),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = 16.dp,
+                                        vertical = 8.dp
+                                    ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = countryName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
+                }
+                Box(modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clipToBounds()) {
+                    if (articles.loadState.refresh is LoadState.Loading && articles.itemCount == 0) {
+                        LoadingState()
+                    } else if (articles.loadState.refresh is LoadState.Error && articles.itemCount == 0) {
+                        val error = (articles.loadState.refresh as LoadState.Error).error
+                        ErrorState(error.message)
+                    } else if (articles.loadState.refresh is LoadState.NotLoading && articles.itemCount == 0) {
+                        EmptyState()
+                    } else {
+                        when (viewMode) {
+                            ViewMode.LIST -> {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(articles.itemCount) { index ->
+                                        articles[index]?.let { article ->
+                                            NewsArticleListItem(article) { onItemClicked(it) }
+                                        }
+                                    }
 
-                    ViewMode.GRID -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(articles.itemCount) { index ->
-                                articles[index]?.let { article ->
-                                    NewsArticleGridItem(article) { onItemClicked(it) }
+                                    item {
+                                        LoadingFooter(articles.loadState.append)
+                                    }
                                 }
                             }
 
-                            item {
-                                LoadingFooter(articles.loadState.append)
+                            ViewMode.GRID -> {
+                                LazyVerticalGrid(
+                                    state = gridState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    columns = GridCells.Fixed(2),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(articles.itemCount) { index ->
+                                        articles[index]?.let { article ->
+                                            NewsArticleGridItem(article) { onItemClicked(it) }
+                                        }
+                                    }
+
+                                    item {
+                                        LoadingFooter(articles.loadState.append)
+                                    }
+                                }
                             }
                         }
                     }
@@ -220,6 +329,51 @@ private fun HomeScreenContent(
             }
         }
     }
+}
+
+@Composable
+fun OsmMapView(
+    mapLocation: GeoPoint?,
+    countryName: String?,
+    onMapClick: (Double, Double) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val mapView = remember {
+        Configuration.getInstance().userAgentValue = context.packageName
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            controller.setZoom(5.0)
+        }
+    }
+
+    LaunchedEffect(mapLocation, countryName) {
+        if (mapLocation != null) {
+            mapView.overlays.removeAll { it is Marker }
+            val marker = Marker(mapView)
+            marker.position = mapLocation
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            mapView.overlays.add(marker)
+            mapView.controller.animateTo(mapLocation)
+        }
+    }
+
+    AndroidView(
+        factory = {
+            val mapEventsReceiver = object : MapEventsReceiver {
+                override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                    onMapClick(p.latitude, p.longitude)
+                    return true
+                }
+
+                override fun longPressHelper(p: GeoPoint): Boolean = false
+            }
+            mapView.overlays.add(0, MapEventsOverlay(mapEventsReceiver))
+            mapView
+        },
+        modifier = modifier
+    )
 }
 
 @Composable

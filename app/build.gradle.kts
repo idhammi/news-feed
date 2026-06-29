@@ -68,6 +68,9 @@ dependencies {
     // Talsec FreeRASP
     implementation(libs.talsec.freerasp)
 
+    // Osmdroid
+    implementation(libs.osmdroid.android)
+
     testImplementation(libs.junit)
     testImplementation(libs.koin.test)
     testImplementation(libs.koin.test.junit4)
