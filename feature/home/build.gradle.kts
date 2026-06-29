@@ -23,6 +23,7 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     // Koin
+    implementation(libs.osmdroid.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.core)
 
