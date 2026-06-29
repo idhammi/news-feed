@@ -4,9 +4,9 @@ A simple Android application that displays news articles using the NewsAPI. Buil
 
 ## Features
 
-| List View                       | Grid View                       | Detail View                       |
-|---------------------------------|---------------------------------|-----------------------------------|
-| ![List View](docs/images/1.png) | ![Grid View](docs/images/2.png) | ![Detail View](docs/images/3.png) |
+| List View                       | Grid View                       | Map View                        | Detail View                       |
+|---------------------------------|---------------------------------|---------------------------------|-----------------------------------|
+| ![List View](docs/images/1.png) | ![Grid View](docs/images/2.png) | ![Map View](docs/images/5.png)  | ![Detail View](docs/images/3.png) |
 
 
 - 📰 Browse top news headlines
@@ -14,7 +14,7 @@ A simple Android application that displays news articles using the NewsAPI. Buil
 - 📱 Modern Material Design 3 UI
 - ♾️ Infinite scrolling with pagination
 - 🗄️ **Offline Caching**: Read downloaded news without an internet connection (Room).
-- 📍 **Localized News (LBS)**: Dynamically fetches news for your current country using GPS.
+- 📍 **Interactive News Map (LBS)**: Dynamically fetches localized news using GPS.
 - 🔒 **Mobile Security**: Protected against rooting, emulators, tampering, and MITM attacks via freeRASP and Network Security Config.
 - 📳 **Shake to Refresh**: Physically shake the device to reload the feed using the Accelerometer sensor.
 - 🖼️ Image loading with caching
@@ -78,9 +78,10 @@ app
 - **Paging 3** - Infinite scrolling pagination (with `RemoteMediator`)
 - **Navigation Compose** - Screen navigation
 
-### Security & Device
+### Security & Location
 - **Talsec freeRASP** - Runtime Application Self-Protection (Root, Emulator, Hooking detection)
 - **Play Services Location** - GPS coordinates and Reverse Geocoding
+- **Osmdroid** - Interactive OpenStreetMap integration
 - **Hardware Sensors** - Accelerometer event detection
 
 ### Dependency Injection
