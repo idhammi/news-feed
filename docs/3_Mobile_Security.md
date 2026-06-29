@@ -1,19 +1,42 @@
 # Mobile Security Features
 
-This project incorporates security measures to protect application integrity and secure network communications against reverse engineering and Man-in-the-Middle (MITM) attacks.
+This project incorporates security measures mapped against the **OWASP Mobile Top 10**.
 
-## 1. RASP (Runtime Application Self-Protection)
+## OWASP Mobile Top 10 Mitigation Matrix
 
-The application integrates the **freeRASP SDK by Talsec** to monitor device and application state during runtime.
+### M1: Improper Credential Usage
+**Mitigation:** The application does not authenticate users. The only credential is the `NewsAPI` key, which is safely injected at build-time via `local.properties` and never hardcoded in the repository.
 
-The SDK actively detects the following threats:
-- **Rooted & Jailbroken Devices**: Restricts execution on compromised operating systems.
-- **Emulators**: Prevents the application from running within simulated environments.
-- **Hooking Frameworks**: Detects memory injection attempts (e.g., Frida, Xposed) designed to alter application behavior.
-- **App Tampering**: Verifies the signing certificate hash. If the APK is modified and resigned, the application identifies the discrepancy.
+### M2: Inadequate Supply Chain Security
+**Mitigation:** The freeRASP SDK restricts execution to authorized app stores like Google Play. This prevents the application from running if installed via side-loading or untrusted third-party marketplaces.
 
-### Code Sample
-Here is the `SecurityMonitor` implementation handling the freeRASP configuration and exposing threat detection states:
+### M3: Insecure Authentication/Authorization
+**Mitigation:** Not applicable. The application functions entirely as a read-only news feed and does not handle user accounts or privileged actions.
+
+### M4: Insufficient Input/Output Validation
+**Mitigation:** All incoming API responses are strictly parsed and validated using **Moshi** and **Retrofit**. Kotlin's strict nullability further prevents injection or malformed data crashes.
+
+### M5: Insecure Communication
+**Mitigation:** The OS-level `network_security_config.xml` explicitly disables cleartext HTTP traffic. All network requests are strictly routed over encrypted HTTPS (SSL/TLS) to prevent MITM attacks.
+
+### M6: Inadequate Privacy Controls
+**Mitigation:** Location permissions are requested only when navigating to the Local News tab. GPS coordinates are used exclusively for local reverse geocoding and are never transmitted to backend servers.
+
+### M7: Insufficient Binary Protection
+**Mitigation:** **freeRASP by Talsec** actively prevents execution on rooted/jailbroken devices, blocks emulators, and detects memory hooking (e.g., Frida). App tampering is prevented via public signature hashing. Release builds are obfuscated via **ProGuard/R8**.
+
+### M8: Security Misconfiguration
+**Mitigation:** Debugging tools, such as the Chucker network inspector, are strictly isolated to `debug` builds and completely stripped from the production release.
+
+### M9: Insecure Data Storage
+**Mitigation:** Local Room caching is used exclusively for public news articles. Sensitive API keys are never stored locally in the database or shared preferences.
+
+### M10: Insufficient Cryptography
+**Mitigation:** The app relies entirely on modern Android native TLS implementations for network transport. No custom or deprecated cryptographic algorithms are used in the codebase.
+
+---
+
+## Code Sample: RASP Security Monitor
 
 ```kotlin
 object SecurityMonitor : ThreatListener.ThreatDetected {
@@ -37,28 +60,14 @@ object SecurityMonitor : ThreatListener.ThreatDetected {
 
     override fun onRootDetected() { _threatFlow.value = "Root/Jailbreak detected" }
     override fun onDebuggerDetected() { _threatFlow.value = "Debugger attached" }
-    // Other threat listeners...
 }
 ```
 
 ### Configuration Details
+1. **`expectedAlternativePackageNames`**: Specifies authorized stores (e.g., Google Play) to prevent untrusted side-loading.
+2. **`expectedSigningCertificateHashBase64`**: Base64 SHA-256 hash of the public signing key. Prevents malicious APK tampering and resigning.
 
-1. **Alternative Package Names** (`expectedAlternativePackageNames`): Specifies authorized app stores (e.g., `com.android.vending` for Google Play) to prevent the app from running if installed from untrusted third-party sources.
-
-2. **Signing Certificate Hash** (`expectedSigningCertificateHashBase64`): A Base64-encoded SHA-256 hash of the application's official public signing certificate. 
-   - **Safety**: It is completely safe to hardcode because it is derived from the public key, not the private key.
-   - **Purpose**: It prevents tampering. If the APK is modified and resigned by a malicious actor, the signature hash will change, and the app will instantly terminate itself.
-
-**Threat Handling:**
-When a threat is detected, the `SecurityMonitor` component triggers an un-dismissible Alert Dialog. The application then automatically terminates its process to prevent unauthorized access.
-
-## 2. Network Security Configuration
-
-The application enforces network security at the OS level using `network_security_config.xml`.
-
-- **Cleartext Traffic Restriction**: All HTTP connections are explicitly disabled (`cleartextTrafficPermitted="false"`). Network requests are strictly routed over encrypted HTTPS (SSL/TLS) channels to ensure data confidentiality.
-
-## 3. Implementation Screenshots
+## Implementation Screenshots
 
 **Security Threat Detection Dialog:**<br>
 <img src="images/6.png" width="300" alt="Security Dialog"/>
